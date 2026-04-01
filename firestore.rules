@@ -1,0 +1,191 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    function isAdmin() {
+      return signedIn() && uid() == 's9Vo2O5FnKZ7grNN3kRu7DUsN222';
+    }
+
+    function userDocPath(userId) {
+      return /databases/$(database)/documents/users/$(userId);
+    }
+
+    function userExists(userId) {
+      return exists(userDocPath(userId));
+    }
+
+    function userData(userId) {
+      return get(userDocPath(userId)).data;
+    }
+
+    function isSelf(userId) {
+      return signedIn() && uid() == userId;
+    }
+
+    function isNotBanned(userId) {
+      return !userExists(userId) || userData(userId).banned != true;
+    }
+
+    function notSuspended(userId) {
+      return !userExists(userId) ||
+        userData(userId).suspendedUntil == null ||
+        userData(userId).suspendedUntil <= request.time;
+    }
+
+    function canUseApp(userId) {
+      return isSelf(userId) && isNotBanned(userId) && notSuspended(userId);
+    }
+
+    function blockDoc(ownerId, otherId) {
+      return /databases/$(database)/documents/users/$(ownerId)/blocks/$(otherId);
+    }
+
+    function isBlockedEitherWay(a, b) {
+      return exists(blockDoc(a, b)) || exists(blockDoc(b, a));
+    }
+
+    function isRewardOnlyUpdate() {
+      return resource != null &&
+        request.resource != null &&
+        request.resource.data.diff(resource.data).changedKeys().hasOnly(['inci']) &&
+        resource.data.inci is int &&
+        request.resource.data.inci is int &&
+        request.resource.data.inci == resource.data.inci + 5;
+    }
+
+    match /users/{userId} {
+      allow read: if isSelf(userId) || isAdmin();
+      allow create: if isSelf(userId);
+      allow update: if isSelf(userId) || isAdmin() || (signedIn() && isRewardOnlyUpdate());
+      allow delete: if isSelf(userId) || isAdmin();
+
+      match /blocks/{otherId} {
+        allow read: if isSelf(userId) || isAdmin();
+        allow create: if canUseApp(userId) &&
+          request.resource.data.otherId == otherId &&
+          request.resource.data.otherName is string &&
+          request.resource.data.createdAt == request.time &&
+          request.resource.data.banned == false &&
+          request.resource.data.suspendedUntil == null;
+        allow delete: if canUseApp(userId) || isAdmin();
+        allow update: if isAdmin();
+      }
+
+      match /caughtSecrets/{secretId} {
+        allow read: if isSelf(userId) || isAdmin();
+        allow write: if false;
+      }
+
+      match /passedSecrets/{secretId} {
+        allow read: if isSelf(userId) || isAdmin();
+        allow write: if false;
+      }
+
+      match /seenSecrets/{secretId} {
+        allow read: if isSelf(userId) || isAdmin();
+        allow write: if false;
+      }
+
+      match /limitEvents/{eventId} {
+        allow read: if isSelf(userId) || isAdmin();
+        allow write: if false;
+      }
+    }
+
+    match /secrets/{secretId} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /chat_requests/{requestId} {
+      allow read: if signedIn() &&
+        (resource.data.requesterId == uid() || resource.data.secretAuthorId == uid() || isAdmin());
+
+      allow create: if signedIn() &&
+        canUseApp(uid()) &&
+        request.resource.data.requesterId == uid() &&
+        request.resource.data.requesterName is string &&
+        request.resource.data.secretId is string &&
+        request.resource.data.secretAuthorId is string &&
+        request.resource.data.secretAuthorName is string &&
+        request.resource.data.secretSnapshotText is string &&
+        request.resource.data.firstMessageText is string &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.banned == false &&
+        request.resource.data.suspendedUntil == null &&
+        request.resource.data.decisionAt == null &&
+        request.resource.data.conversationId == null &&
+        request.resource.data.requesterId != request.resource.data.secretAuthorId &&
+        !isBlockedEitherWay(request.resource.data.requesterId, request.resource.data.secretAuthorId);
+
+      allow update: if signedIn() &&
+        (resource.data.requesterId == uid() || resource.data.secretAuthorId == uid() || isAdmin());
+
+      allow delete: if isAdmin();
+    }
+
+    match /conversations/{convId} {
+      allow read: if signedIn() && (uid() in resource.data.memberIds || isAdmin());
+      allow create: if signedIn() &&
+        request.resource.data.memberIds is list &&
+        uid() in request.resource.data.memberIds;
+      allow update: if signedIn() &&
+        ((uid() in resource.data.memberIds) || (uid() in request.resource.data.memberIds) || isAdmin());
+      allow delete: if isAdmin();
+
+      match /messages/{messageId} {
+        allow read: if signedIn() &&
+          (uid() in get(/databases/$(database)/documents/conversations/$(convId)).data.memberIds || isAdmin());
+
+        allow create: if signedIn() &&
+          uid() in get(/databases/$(database)/documents/conversations/$(convId)).data.memberIds &&
+          request.resource.data.senderId is string &&
+          request.resource.data.text is string;
+
+        allow update: if isAdmin();
+        allow delete: if isAdmin();
+      }
+    }
+
+    match /reports/{reportId} {
+      allow read: if isAdmin();
+
+      allow create: if signedIn() &&
+        canUseApp(uid()) &&
+        request.resource.data.reporterId == uid() &&
+        request.resource.data.reporterName is string &&
+        request.resource.data.targetId is string &&
+        request.resource.data.targetName is string &&
+        request.resource.data.targetType is string &&
+        request.resource.data.reason is string &&
+        request.resource.data.status == 'open' &&
+        request.resource.data.createdAt is timestamp &&
+        request.resource.data.banned == false &&
+        request.resource.data.suspendedUntil == null;
+
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /drops/{dropId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /usage/{userId} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

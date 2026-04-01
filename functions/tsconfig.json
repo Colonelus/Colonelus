@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "outDir": "lib",
+    "target": "es2019",
+    "strict": true
+  },
+  "compileOnSave": true,
+  "include": [
+    "src"
+  ]
+}
