@@ -1,0 +1,8 @@
+﻿.dart_tool/
+build/
+android/app/build/
+ios/Flutter/.last_build_id
+android/app/src/main/res/raw/
+*.apk
+*.so
+*.jks

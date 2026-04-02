@@ -1,0 +1,32 @@
+function isSignedIn() { return request.auth != null; }
+function isAdmin() { return isSignedIn() && exists(/databases/$(database)/documents/admin_allowlist/$(request.auth.uid)); }
+
+match /admin_allowlist/{uid} {
+  allow read: if isSignedIn() && request.auth.uid == uid;
+  allow write: if false;
+}
+
+match /reports/{docId} {
+  allow read, update: if isAdmin();
+  allow create: if isSignedIn();
+  allow delete: if isAdmin();
+}
+
+match /users/{uid} {
+  allow read, update: if isAdmin();
+}
+
+match /secrets/{docId} {
+  allow read: if isAdmin();
+}
+
+match /chat_requests/{docId} {
+  allow read: if isAdmin();
+}
+
+match /conversations/{docId} {
+  allow read: if isAdmin();
+  match /messages/{mid} {
+    allow read: if isAdmin();
+  }
+}

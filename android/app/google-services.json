@@ -1,0 +1,100 @@
+{
+  "project_info": {
+    "project_number": "458930834462",
+    "project_id": "sirdas-20e97",
+    "storage_bucket": "sirdas-20e97.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:458930834462:android:27fd96e7a29c2d21a0720f",
+        "android_client_info": {
+          "package_name": "com.colonelus.sirdas"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "458930834462-5pt10ftuajm82acp13uc3jkk1ievlj8m.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.colonelus.sirdas",
+            "certificate_hash": "70b7ce72afb764036471173818482b52f9e5c192"
+          }
+        },
+        {
+          "client_id": "458930834462-b9tl21g90nfbc7f8sn633c18lv48gst4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.colonelus.sirdas",
+            "certificate_hash": "552b8b54739bcb354f2d30b357932712da20a1a6"
+          }
+        },
+        {
+          "client_id": "458930834462-ssdtti15dpc59qfc1fc841qnsuunabnh.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.colonelus.sirdas",
+            "certificate_hash": "f659106d21f249fb21ab713a86e0fa1cdcd1b8f3"
+          }
+        },
+        {
+          "client_id": "458930834462-e9f63j3u8nminf32l8bdj3nku732brud.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC_HuDEcUXbpBx8bnhFs5_yvIkvTfrePw0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "458930834462-e9f63j3u8nminf32l8bdj3nku732brud.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:458930834462:android:c4d5c8cd1a993a4ba0720f",
+        "android_client_info": {
+          "package_name": "com.example.sirdas_yeni"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "458930834462-tnlde5rgnpjgrig0olcebpv0jfvtm5q0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.sirdas_yeni",
+            "certificate_hash": "f659106d21f249fb21ab713a86e0fa1cdcd1b8f3"
+          }
+        },
+        {
+          "client_id": "458930834462-e9f63j3u8nminf32l8bdj3nku732brud.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC_HuDEcUXbpBx8bnhFs5_yvIkvTfrePw0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "458930834462-e9f63j3u8nminf32l8bdj3nku732brud.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
