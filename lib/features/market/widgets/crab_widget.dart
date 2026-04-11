@@ -90,8 +90,9 @@ class _CrabWidgetState extends State<CrabWidget>
           .doc('crab_drop')
           .snapshots(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData || !snapshot.data!.exists)
+        if (!snapshot.hasData || !snapshot.data!.exists) {
           return const SizedBox.shrink();
+        }
 
         final data = snapshot.data!.data() as Map<String, dynamic>? ?? {};
         final isActive = data['isActive'] ?? false;
@@ -99,8 +100,9 @@ class _CrabWidgetState extends State<CrabWidget>
         final List claimedBy = data['claimedBy'] ?? [];
 
         if (!isActive) return const SizedBox.shrink();
-        if (expiresAt != null && DateTime.now().isAfter(expiresAt))
+        if (expiresAt != null && DateTime.now().isAfter(expiresAt)) {
           return const SizedBox.shrink();
+        }
         if (claimedBy.contains(uid)) return const SizedBox.shrink();
         if (claimedBy.length >= 10) return const SizedBox.shrink();
 

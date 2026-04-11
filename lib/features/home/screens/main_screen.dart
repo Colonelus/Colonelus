@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
+import '../../chat/services/chat_service.dart';
 import '../../chat/screens/chat_center_screen.dart';
 import '../../sea/screens/sea_view_screen.dart';
 import '../../profile/screens/profile_screen.dart';
@@ -27,6 +29,8 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final String uid = fb.FirebaseAuth.instance.currentUser?.uid ?? "";
+
     return Scaffold(
       backgroundColor: const Color(0xFF001B2E),
       body: IndexedStack(
@@ -47,13 +51,61 @@ class _MainScreenState extends State<MainScreen> {
           if (_currentIndex == index) return;
           setState(() => _currentIndex = index);
         },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.waves), label: "Deniz"),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat_bubble_outline),
-            label: "Mesajlar",
+        items: [
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.waves),
+            label: "Deniz",
           ),
           BottomNavigationBarItem(
+            icon: StreamBuilder<int>(
+              stream: ChatService.unreadConversationsCountStream(uid),
+              builder: (context, unreadSnap) {
+                return StreamBuilder<int>(
+                  stream: ChatService.pendingRequestsCountStream(uid),
+                  builder: (context, pendingSnap) {
+                    final int unreadCount = unreadSnap.data ?? 0;
+                    final int pendingCount = pendingSnap.data ?? 0;
+                    final int total = unreadCount + pendingCount;
+
+                    return Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        const Icon(Icons.chat_bubble_outline),
+                        if (total > 0)
+                          Positioned(
+                            right: -8,
+                            top: -8,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
+                                color: Colors.redAccent,
+                                shape: BoxShape.circle,
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 18,
+                                minHeight: 18,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  total > 9 ? '9+' : '$total',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                );
+              },
+            ),
+            label: "Sohbet",
+          ),
+          const BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
             label: "Profil",
           ),

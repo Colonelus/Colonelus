@@ -1,5 +1,3 @@
-// lib/features/sea/services/feed_service.dart
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class FeedService {
@@ -11,9 +9,10 @@ class FeedService {
     );
     return _db
         .collection('secrets')
+        .where('banned', isEqualTo: false)
         .where('createdAt', isGreaterThan: since)
         .orderBy('createdAt', descending: true)
-        .limit(120)
+        .limit(20)
         .snapshots();
   }
 

@@ -45,7 +45,10 @@ class _AuthEkraniState extends State<AuthEkrani> {
   Future<void> _googleLogin() async {
     setState(() => _busy = true);
     try {
-      final GoogleSignInAccount? gUser = await GoogleSignIn().signIn();
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+      await googleSignIn.signOut();
+      final GoogleSignInAccount? gUser = await googleSignIn.signIn();
+
       if (gUser == null) {
         setState(() => _busy = false);
         return;

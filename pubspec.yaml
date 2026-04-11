@@ -1,7 +1,7 @@
 name: sirdas_yeni
 description: A new Flutter project.
 publish_to: none
-version: 1.0.0+30
+version: 1.0.0+56
 
 environment:
   sdk: ^3.11.0
@@ -23,15 +23,26 @@ dependencies:
   app_links: ^6.4.1
   share_plus: ^11.0.0
   firebase_analytics: ^11.6.0
+  purchases_flutter: ^9.16.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/images/sirdas_icon.png"
+  adaptive_icon_background: "#0F172A"
+  adaptive_icon_foreground: "assets/images/sirdas_icon.png"
 
 flutter:
   uses-material-design: true
   assets:
     - assets/images/market_mock.png
     - assets/images/bottles/
+    - assets/images/pearls/
     - assets/images/adminin_gemi.png
+    - assets/images/sirdas_icon.png

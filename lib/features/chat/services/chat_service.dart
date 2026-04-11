@@ -8,12 +8,36 @@ class ChatService {
   static String _rid(String prefix) =>
       "${prefix}_${DateTime.now().millisecondsSinceEpoch}_${math.Random().nextInt(999999)}";
 
+  static Stream<int> pendingRequestsCountStream(String uid) {
+    return _db
+        .collection('chat_requests')
+        .where('secretAuthorId', isEqualTo: uid)
+        .where('status', isEqualTo: RequestStatus.pending.name)
+        .snapshots()
+        .map((snap) => snap.docs.length);
+  }
+
+  static Stream<int> unreadConversationsCountStream(String uid) {
+    return _db
+        .collection('conversations')
+        .where('memberIds', arrayContains: uid)
+        .snapshots()
+        .map((snap) {
+          return snap.docs.where((doc) {
+            final unreadMap = doc.data()['unreadBy'] as Map?;
+            final count = unreadMap?[uid] ?? 0;
+            return count > 0;
+          }).length;
+        });
+  }
+
   static Stream<QuerySnapshot<Map<String, dynamic>>> incomingRequestsStream(
     String uid,
   ) {
     return _db
         .collection('chat_requests')
         .where('secretAuthorId', isEqualTo: uid)
+        .where('status', isEqualTo: RequestStatus.pending.name)
         .orderBy('createdAt', descending: true)
         .limit(80)
         .snapshots();
@@ -25,6 +49,7 @@ class ChatService {
     return _db
         .collection('chat_requests')
         .where('requesterId', isEqualTo: uid)
+        .where('status', isEqualTo: RequestStatus.pending.name)
         .orderBy('createdAt', descending: true)
         .limit(80)
         .snapshots();
@@ -36,6 +61,7 @@ class ChatService {
     return _db
         .collection('conversations')
         .where('memberIds', arrayContains: uid)
+        .orderBy('lastAt', descending: true)
         .limit(80)
         .snapshots();
   }
@@ -44,9 +70,9 @@ class ChatService {
     required String convId,
     required String userId,
   }) async {
-    await _db.collection('conversations').doc(convId).set({
-      'unreadBy': {userId: 0},
-    }, SetOptions(merge: true));
+    await _db.collection('conversations').doc(convId).update({
+      'unreadBy.$userId': 0,
+    });
   }
 
   static Future<void> createChatRequest({
@@ -67,9 +93,20 @@ class ChatService {
         safeSecretAuthorId.isEmpty ||
         safeRequesterId.isEmpty ||
         safeFirstMessageText.isEmpty ||
-        safeSecretAuthorId == safeRequesterId) {
+        safeSecretAuthorId == safeRequesterId)
       return;
-    }
+
+    final batch = _db.batch();
+    final now = FieldValue.serverTimestamp();
+
+    batch.set(
+      _db
+          .collection('users')
+          .doc(safeRequesterId)
+          .collection('seenSecrets')
+          .doc(safeSecretId),
+      {"at": now},
+    );
 
     final basePayload = <String, dynamic>{
       "secretId": safeSecretId,
@@ -84,7 +121,7 @@ class ChatService {
           : requesterName.trim(),
       "firstMessageText": safeFirstMessageText,
       "status": RequestStatus.pending.name,
-      "createdAt": FieldValue.serverTimestamp(),
+      "createdAt": now,
       "banned": false,
       "suspendedUntil": null,
       "decisionAt": null,
@@ -95,32 +132,28 @@ class ChatService {
         .collection('chat_requests')
         .where('secretId', isEqualTo: safeSecretId)
         .where('requesterId', isEqualTo: safeRequesterId)
-        .limit(10)
+        .limit(5)
         .get();
 
+    bool updated = false;
     for (final doc in existing.docs) {
       final data = doc.data();
-      if ((data['secretAuthorId'] as String?)?.trim() != safeSecretAuthorId) {
-        continue;
-      }
       if (data['status'] == RequestStatus.pending.name) {
-        await doc.reference.set(basePayload, SetOptions(merge: true));
-        return;
+        batch.set(doc.reference, basePayload, SetOptions(merge: true));
+        updated = true;
+        break;
       }
-      final existingConvId = (data['conversationId'] as String?)?.trim() ?? '';
-      if (data['status'] == RequestStatus.accepted.name &&
-          existingConvId.isNotEmpty) {
-        await doc.reference.set({
-          "secretAuthorName": basePayload["secretAuthorName"],
-          "secretSnapshotText": basePayload["secretSnapshotText"],
-          "requesterName": basePayload["requesterName"],
-          "firstMessageText": basePayload["firstMessageText"],
-        }, SetOptions(merge: true));
+      if (data['status'] == RequestStatus.accepted.name) {
+        await batch.commit();
         return;
       }
     }
 
-    await _db.collection('chat_requests').doc(_rid("req")).set(basePayload);
+    if (!updated) {
+      batch.set(_db.collection('chat_requests').doc(_rid("req")), basePayload);
+    }
+
+    await batch.commit();
   }
 
   static Future<String?> acceptRequest({
@@ -128,37 +161,21 @@ class ChatService {
     required String accepterId,
   }) async {
     final reqRef = _db.collection('chat_requests').doc(requestId);
-    Map<String, dynamic>? acceptedRequest;
-    final convId = await _db.runTransaction((tx) async {
+    return await _db.runTransaction((tx) async {
       final reqSnap = await tx.get(reqRef);
-      final req = reqSnap.data();
-      if (req == null) return null;
-      if (req['status'] != RequestStatus.pending.name) return null;
-      if (req['secretAuthorId'] != accepterId) return null;
-
-      acceptedRequest = Map<String, dynamic>.from(req);
-
-      final existingConvId = (req['conversationId'] as String?)?.trim();
-      if (existingConvId != null && existingConvId.isNotEmpty) {
-        final existingConv = await tx.get(
-          _db.collection('conversations').doc(existingConvId),
-        );
-        if (existingConv.exists) {
-          tx.update(reqRef, {
-            'status': RequestStatus.accepted.name,
-            'decisionAt': FieldValue.serverTimestamp(),
-          });
-          return existingConvId;
-        }
-      }
+      if (!reqSnap.exists) return null;
+      final req = reqSnap.data()!;
+      if (req['status'] != RequestStatus.pending.name ||
+          req['secretAuthorId'] != accepterId)
+        return null;
 
       final convId = _rid('conv');
       final convRef = _db.collection('conversations').doc(convId);
       final now = FieldValue.serverTimestamp();
-      final firstMessageText =
-          (req['firstMessageText'] as String?)?.trim() ?? '';
+      final firstMsg = (req['firstMessageText'] as String?)?.trim() ?? '';
 
       tx.set(convRef, {
+        'id': convId,
         'memberIds': [req['secretAuthorId'], req['requesterId']],
         'memberNames': {
           req['secretAuthorId']: req['secretAuthorName'],
@@ -166,8 +183,14 @@ class ChatService {
         },
         'createdAt': now,
         'lastAt': now,
-        'lastText': firstMessageText,
-        'unreadBy': {req['secretAuthorId']: 0, req['requesterId']: 0},
+        'lastText': firstMsg,
+        'unreadBy': {req['secretAuthorId']: 0, req['requesterId']: 1},
+      });
+
+      tx.set(convRef.collection('messages').doc(_rid('msg')), {
+        'senderId': req['requesterId'],
+        'text': firstMsg,
+        'createdAt': now,
       });
 
       tx.update(reqRef, {
@@ -175,33 +198,8 @@ class ChatService {
         'decisionAt': now,
         'conversationId': convId,
       });
-
       return convId;
     });
-
-    if (convId == null) return null;
-
-    final req = acceptedRequest;
-    final firstMessageText =
-        (req?['firstMessageText'] as String?)?.trim() ?? '';
-    final requesterId = (req?['requesterId'] as String?)?.trim() ?? '';
-    if (firstMessageText.isNotEmpty && requesterId.isNotEmpty) {
-      final existingFirst = await _db
-          .collection('conversations')
-          .doc(convId)
-          .collection('messages')
-          .limit(1)
-          .get();
-      if (existingFirst.docs.isEmpty) {
-        await sendMessage(
-          convId: convId,
-          senderId: requesterId,
-          text: firstMessageText,
-        );
-      }
-    }
-
-    return convId;
   }
 
   static Future<void> rejectRequest({
@@ -212,9 +210,10 @@ class ChatService {
     await _db.runTransaction((tx) async {
       final snap = await tx.get(ref);
       final d = snap.data();
-      if (d == null) return;
-      if (d['status'] != RequestStatus.pending.name) return;
-      if (d['secretAuthorId'] != rejecterId) return;
+      if (d == null ||
+          d['status'] != RequestStatus.pending.name ||
+          d['secretAuthorId'] != rejecterId)
+        return;
       tx.update(ref, {
         "status": RequestStatus.rejected.name,
         "decisionAt": FieldValue.serverTimestamp(),
@@ -230,9 +229,10 @@ class ChatService {
     await _db.runTransaction((tx) async {
       final snap = await tx.get(ref);
       final d = snap.data();
-      if (d == null) return;
-      if (d['status'] != RequestStatus.pending.name) return;
-      if (d['requesterId'] != requesterId) return;
+      if (d == null ||
+          d['status'] != RequestStatus.pending.name ||
+          d['requesterId'] != requesterId)
+        return;
       tx.update(ref, {
         "status": RequestStatus.cancelled.name,
         "decisionAt": FieldValue.serverTimestamp(),
@@ -261,69 +261,71 @@ class ChatService {
     final convRef = _db.collection('conversations').doc(convId);
     await _db.runTransaction((tx) async {
       final convSnap = await tx.get(convRef);
-      final conv = convSnap.data() ?? const <String, dynamic>{};
-      final memberIds = ((conv['memberIds'] as List?) ?? const [])
-          .whereType<String>()
-          .toList();
+      final conv = convSnap.data() ?? {};
+      final memberIds = List<String>.from(conv['memberIds'] ?? []);
       final now = FieldValue.serverTimestamp();
+
       tx.set(convRef.collection('messages').doc(_rid('msg')), {
         'senderId': senderId,
         'text': text,
         'createdAt': now,
-        'banned': false,
-        'suspendedUntil': null,
       });
-      final update = <String, dynamic>{
-        'lastAt': now,
-        'lastText': text,
-        'unreadBy.$senderId': 0,
-      };
-      for (final memberId in memberIds) {
-        if (memberId == senderId) continue;
-        update['unreadBy.$memberId'] = FieldValue.increment(1);
+      final update = <String, dynamic>{'lastAt': now, 'lastText': text};
+      for (var mid in memberIds) {
+        if (mid != senderId) update['unreadBy.$mid'] = FieldValue.increment(1);
       }
-      tx.set(convRef, update, SetOptions(merge: true));
+      tx.update(convRef, update);
     });
   }
-
-  static DocumentReference<Map<String, dynamic>> _blockRef(
-    String ownerId,
-    String otherId,
-  ) => _db.collection('users').doc(ownerId).collection('blocks').doc(otherId);
-
-  static Stream<DocumentSnapshot<Map<String, dynamic>>> blockDocStream({
-    required String ownerId,
-    required String otherId,
-  }) => _blockRef(ownerId, otherId).snapshots();
 
   static Future<void> blockUser({
     required String ownerId,
     required String otherId,
     required String otherName,
   }) async {
-    await _blockRef(ownerId, otherId).set({
-      "otherId": otherId,
-      "otherName": otherName,
-      "createdAt": FieldValue.serverTimestamp(),
-      "banned": false,
-      "suspendedUntil": null,
-    });
+    await _db
+        .collection('users')
+        .doc(ownerId)
+        .collection('blocks')
+        .doc(otherId)
+        .set({
+          "otherId": otherId,
+          "otherName": otherName,
+          "createdAt": FieldValue.serverTimestamp(),
+          "banned": false,
+          "suspendedUntil": null,
+        });
   }
 
   static Future<void> unblockUser({
     required String ownerId,
     required String otherId,
   }) async {
-    await _blockRef(ownerId, otherId).delete();
+    await _db
+        .collection('users')
+        .doc(ownerId)
+        .collection('blocks')
+        .doc(otherId)
+        .delete();
   }
 
   static Future<bool> isBlockedEitherWay({
     required String meId,
     required String otherId,
   }) async {
-    final a = await _blockRef(meId, otherId).get();
+    final a = await _db
+        .collection('users')
+        .doc(meId)
+        .collection('blocks')
+        .doc(otherId)
+        .get();
     if (a.exists) return true;
-    final b = await _blockRef(otherId, meId).get();
+    final b = await _db
+        .collection('users')
+        .doc(otherId)
+        .collection('blocks')
+        .doc(meId)
+        .get();
     return b.exists;
   }
 
@@ -338,15 +340,14 @@ class ChatService {
     String? convId,
     String? snapshotText,
   }) async {
-    final r = reason.trim();
-    if (r.isEmpty) return;
+    if (reason.trim().isEmpty) return;
     await _db.collection('reports').doc(_rid("rep")).set({
       "reporterId": reporterId,
       "reporterName": reporterName,
       "targetId": targetId,
       "targetName": targetName,
       "targetType": targetType,
-      "reason": r.length > 120 ? r.substring(0, 120) : r,
+      "reason": reason.length > 120 ? reason.substring(0, 120) : reason,
       "secretId": secretId,
       "convId": convId,
       "snapshotText": snapshotText,

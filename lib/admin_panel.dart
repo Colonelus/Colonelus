@@ -360,7 +360,7 @@ class _HeatmapScreenState extends State<HeatmapScreen> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _pill("${_days} gün", false, () {}),
+              _pill("$_days gün", false, () {}),
               OutlinedButton(
                 onPressed: () => setState(() => _days = 7),
                 child: const Text("7 gün"),

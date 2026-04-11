@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
@@ -32,6 +31,20 @@ class VipPlan {
   String get price => priceText;
 }
 
+class InciPackage {
+  final String id;
+  final String title;
+  final String price;
+  final ProductDetails rawProduct;
+
+  InciPackage({
+    required this.id,
+    required this.title,
+    required this.price,
+    required this.rawProduct,
+  });
+}
+
 class BillingService {
   BillingService._();
 
@@ -42,7 +55,13 @@ class BillingService {
   static final InAppPurchaseAndroidPlatformAddition _androidAddition = _iap
       .getPlatformAddition<InAppPurchaseAndroidPlatformAddition>();
 
-  static const List<String> _subscriptionProductIds = <String>['sirdas-vip'];
+  static const List<String> _subscriptionProductIds = <String>['sirdas_vip'];
+  static const List<String> _inciProductIds = <String>[
+    'pearl_50',
+    'pearl_120',
+    'pearl_300',
+    'pearl_700',
+  ];
 
   static StreamSubscription<List<PurchaseDetails>>? _sub;
   static void Function(String message)? _onMessage;
@@ -67,92 +86,76 @@ class BillingService {
     _sub = null;
   }
 
-  static Future<List<ProductDetails>> _loadRawProducts() async {
+  static Future<Map<String, dynamic>> loadStoreItems() async {
     final available = await _iap.isAvailable();
-    debugPrint('BILLING available=$available');
-    if (!available) return const <ProductDetails>[];
+    if (!available) return {'plans': <VipPlan>[], 'incis': <InciPackage>[]};
 
     final response = await _iap.queryProductDetails(
-      _subscriptionProductIds.toSet(),
+      {..._subscriptionProductIds, ..._inciProductIds}.toSet(),
     );
-    debugPrint('BILLING found=${response.productDetails.length}');
-    debugPrint('BILLING notFound=${response.notFoundIDs}');
-    debugPrint('BILLING error=${response.error}');
 
     if (response.error != null) {
       throw Exception(response.error!.message ?? 'query-failed');
     }
 
-    return response.productDetails.toList(growable: false);
-  }
-
-  static Future<List<VipPlan>> loadPlans() async {
-    final products = await _loadRawProducts();
     final List<VipPlan> plans = <VipPlan>[];
+    final List<InciPackage> incis = <InciPackage>[];
 
-    for (final product in products) {
-      debugPrint('BILLING product=${product.id}');
-      if (product is GooglePlayProductDetails) {
-        final dynamic native = product.productDetails;
-        final dynamic offerDetails = native.subscriptionOfferDetails;
-        debugPrint('BILLING offers=${offerDetails?.length}');
-
-        if (offerDetails is List && offerDetails.isNotEmpty) {
-          for (final dynamic offer in offerDetails) {
-            final String basePlanId = '${offer.basePlanId ?? ''}';
-            final String? offerToken =
-                offer.offerIdToken?.toString() ?? offer.offerToken?.toString();
-            final String priceText = _extractPriceText(offer) ?? product.price;
-
-            plans.add(
-              VipPlan(
-                id: basePlanId.isEmpty ? product.id : basePlanId,
-                productId: product.id,
-                basePlanId: basePlanId,
-                title: _titleForBasePlan(basePlanId),
-                subtitle: _subtitleForBasePlan(basePlanId),
-                priceText: priceText,
-                badge: _badgeForBasePlan(basePlanId),
-                offerToken: offerToken,
-                rawProduct: product,
-              ),
-            );
-          }
-        } else {
-          plans.add(
-            VipPlan(
-              id: product.id,
-              productId: product.id,
-              basePlanId: '',
-              title: product.title,
-              subtitle: product.description,
-              priceText: product.price,
-              badge: 'VIP',
-              offerToken: product.offerToken,
-              rawProduct: product,
-            ),
-          );
-        }
-      } else {
-        plans.add(
-          VipPlan(
+    for (final product in response.productDetails) {
+      if (_inciProductIds.contains(product.id)) {
+        incis.add(
+          InciPackage(
             id: product.id,
-            productId: product.id,
-            basePlanId: '',
             title: product.title,
-            subtitle: product.description,
-            priceText: product.price,
-            badge: 'VIP',
+            price: product.price,
             rawProduct: product,
           ),
         );
+      } else {
+        if (product is GooglePlayProductDetails) {
+          final dynamic native = product.productDetails;
+          final dynamic offerDetails = native.subscriptionOfferDetails;
+
+          if (offerDetails is List && offerDetails.isNotEmpty) {
+            for (final dynamic offer in offerDetails) {
+              final String basePlanId = '${offer.basePlanId ?? ''}';
+              final String? offerToken =
+                  offer.offerIdToken?.toString() ??
+                  offer.offerToken?.toString();
+              final String priceText =
+                  _extractPriceText(offer) ?? product.price;
+
+              plans.add(
+                VipPlan(
+                  id: basePlanId.isEmpty ? product.id : basePlanId,
+                  productId: product.id,
+                  basePlanId: basePlanId,
+                  title: _titleForBasePlan(basePlanId),
+                  subtitle: _subtitleForBasePlan(basePlanId),
+                  priceText: priceText,
+                  badge: _badgeForBasePlan(basePlanId),
+                  offerToken: offerToken,
+                  rawProduct: product,
+                ),
+              );
+            }
+          }
+        }
       }
     }
 
     plans.sort(
       (a, b) => _sortOrder(a.basePlanId).compareTo(_sortOrder(b.basePlanId)),
     );
-    return plans;
+
+    return {'plans': plans, 'incis': incis};
+  }
+
+  static Future<void> buyInci(InciPackage package) async {
+    final PurchaseParam purchaseParam = PurchaseParam(
+      productDetails: package.rawProduct,
+    );
+    await _iap.buyConsumable(purchaseParam: purchaseParam);
   }
 
   static Future<GooglePlayPurchaseDetails?> _findOwnedSubscription() async {
@@ -208,10 +211,10 @@ class BillingService {
         if (purchase.status == PurchaseStatus.purchased ||
             purchase.status == PurchaseStatus.restored) {
           await _verify(purchase);
-          _onMessage?.call('VIP aktif edildi.');
+          _onMessage?.call('İşlem başarılı.');
         }
       } catch (_) {
-        _onMessage?.call('VIP doğrulanamadı.');
+        _onMessage?.call('Doğrulama başarısız.');
       } finally {
         if (purchase.pendingCompletePurchase) {
           await _iap.completePurchase(purchase);
@@ -236,67 +239,29 @@ class BillingService {
   }
 
   static String _titleForBasePlan(String basePlanId) {
-    switch (basePlanId) {
-      case 'vip-week':
-      case 'vip_week':
-        return 'VIP - 1 Hafta';
-      case 'vip-month':
-      case 'vip_month':
-        return 'VIP - 1 Ay';
-      case 'vip-3month':
-      case 'vip_3month':
-        return 'VIP - 3 Ay';
-      default:
-        return 'Sırdaş VIP';
-    }
+    if (basePlanId.contains('week')) return 'VIP - 1 Hafta';
+    if (basePlanId.contains('3month')) return 'VIP - 3 Ay';
+    if (basePlanId.contains('month')) return 'VIP - 1 Ay';
+    return 'Sırdaş VIP';
   }
 
   static String _subtitleForBasePlan(String basePlanId) {
-    switch (basePlanId) {
-      case 'vip-week':
-      case 'vip_week':
-        return 'Daha fazla sır bırak ve daha fazla sır yakala';
-      case 'vip-month':
-      case 'vip_month':
-        return 'Sırların tekne olarak görünür';
-      case 'vip-3month':
-      case 'vip_3month':
-        return 'Uzun süreli VIP avantajı';
-      default:
-        return 'VIP avantajlarını aç';
-    }
+    if (basePlanId.contains('week')) return 'Denizi keşfetmeye başla';
+    if (basePlanId.contains('3month')) return 'En uzun süreli avantaj';
+    return 'Sırların tekne olarak görünür';
   }
 
   static String _badgeForBasePlan(String basePlanId) {
-    switch (basePlanId) {
-      case 'vip-week':
-      case 'vip_week':
-        return 'Popüler';
-      case 'vip-month':
-      case 'vip_month':
-        return 'En İyi';
-      case 'vip-3month':
-      case 'vip_3month':
-        return 'Avantajlı';
-      default:
-        return 'VIP';
-    }
+    if (basePlanId.contains('week')) return 'Popüler';
+    if (basePlanId.contains('3month')) return 'Avantajlı';
+    return 'En İyi';
   }
 
   static int _sortOrder(String basePlanId) {
-    switch (basePlanId) {
-      case 'vip-week':
-      case 'vip_week':
-        return 1;
-      case 'vip-month':
-      case 'vip_month':
-        return 2;
-      case 'vip-3month':
-      case 'vip_3month':
-        return 3;
-      default:
-        return 99;
-    }
+    if (basePlanId.contains('week')) return 1;
+    if (basePlanId.contains('month') && !basePlanId.contains('3')) return 2;
+    if (basePlanId.contains('3month')) return 3;
+    return 99;
   }
 
   static String? _extractPriceText(dynamic offer) {

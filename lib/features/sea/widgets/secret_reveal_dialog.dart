@@ -1,6 +1,163 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 import '../../../shared/widgets/bottle_widgets.dart';
+
+Future<void> sirriYakalaDialogGoster({
+  required BuildContext context,
+  required String karsiKullaniciId,
+  required String karsiKullaniciRumuz,
+  required String sirId,
+  required String sirIcerigi,
+  required Map<String, dynamic> me,
+}) async {
+  final TextEditingController mesajController = TextEditingController();
+  bool isSending = false;
+
+  await showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF0F172A),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: const BorderSide(color: Colors.white24, width: 1),
+            ),
+            title: const Text(
+              "Sırrı Yakala",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  "Sohbet başlatmak için dikkat çekici bir ilk mesaj gönder.",
+                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: mesajController,
+                  maxLines: 4,
+                  maxLength: 150,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.white10,
+                    hintText: "Mesajını buraya yaz...",
+                    hintStyle: const TextStyle(color: Colors.white30),
+                    counterStyle: const TextStyle(color: Colors.white54),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            actionsAlignment: MainAxisAlignment.spaceEvenly,
+            actions: [
+              OutlinedButton(
+                onPressed: isSending ? null : () => Navigator.pop(context),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white54,
+                  side: const BorderSide(color: Colors.white24),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text("İptal"),
+              ),
+              ElevatedButton(
+                onPressed: isSending
+                    ? null
+                    : () async {
+                        final mesaj = mesajController.text.trim();
+                        if (mesaj.isEmpty) return;
+
+                        setState(() => isSending = true);
+
+                        try {
+                          final uid = fb.FirebaseAuth.instance.currentUser?.uid;
+                          if (uid == null) return;
+
+                          await FirebaseFirestore.instance
+                              .collection('chat_requests')
+                              .add({
+                                'requesterId': uid,
+                                'requesterName': me['rumuz'] ?? 'Sırdaş',
+                                'secretId': sirId,
+                                'secretAuthorId': karsiKullaniciId,
+                                'secretAuthorName': karsiKullaniciRumuz,
+                                'secretSnapshotText': sirIcerigi,
+                                'firstMessageText': mesaj,
+                                'status': 'pending',
+                                'createdAt': FieldValue.serverTimestamp(),
+                                'banned': false,
+                                'suspendedUntil': null,
+                                'decisionAt': null,
+                                'conversationId': null,
+                              });
+
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'İstek gönderildi! Sohbet sekmesinden takip edebilirsin.',
+                                ),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          debugPrint("Hata: $e");
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(
+                              context,
+                            ).showSnackBar(SnackBar(content: Text('Hata: $e')));
+                          }
+                        } finally {
+                          if (context.mounted)
+                            setState(() => isSending = false);
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.cyanAccent,
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: isSending
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.black,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        "Gönder",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
 
 class SecretRevealDialog extends StatefulWidget {
   final String author;
@@ -260,7 +417,16 @@ class _SecretRevealDialogState extends State<SecretRevealDialog>
                 const SizedBox(width: 10),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: widget.authorId == widget.meId ? null : () {},
+                    onPressed: widget.authorId == widget.meId
+                        ? null
+                        : () => sirriYakalaDialogGoster(
+                            context: context,
+                            karsiKullaniciId: widget.authorId,
+                            karsiKullaniciRumuz: widget.author,
+                            sirId: widget.secret['id'] ?? '',
+                            sirIcerigi: widget.content,
+                            me: widget.me,
+                          ),
                     child: const Text('Sırrı Yakala'),
                   ),
                 ),

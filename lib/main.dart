@@ -12,10 +12,12 @@ import 'features/market/screens/market_screen.dart';
 import 'features/profile/screens/profile_screen.dart';
 import 'features/auth/services/auth_profile_service.dart';
 import 'shared/widgets/sea_background.dart';
+import 'features/market/services/revenue_cat_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await RevenueCatService.init();
   runApp(const SirdasApp());
 }
 
@@ -39,7 +41,10 @@ class SirdasApp extends StatelessWidget {
               body: Center(child: CircularProgressIndicator()),
             );
           }
-          if (snapshot.hasData) return const AnaSayfa();
+
+          if (snapshot.hasData && snapshot.data != null) {
+            return const AnaSayfa();
+          }
           return const AuthEkrani();
         },
       ),

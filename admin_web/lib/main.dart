@@ -178,8 +178,9 @@ class AdminGuard extends StatelessWidget {
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: _allowDoc(),
       builder: (context, s) {
-        if (s.hasError)
+        if (s.hasError) {
           return Scaffold(body: Center(child: Text(s.error.toString())));
+        }
         final exists = s.data?.exists == true;
         if (!exists) return const NoAccess();
         return const AdminHome();
@@ -789,11 +790,13 @@ class UsersTab extends StatelessWidget {
       future: _load(),
       builder: (context, snap) {
         if (snap.hasError) return Center(child: Text(snap.error.toString()));
-        if (!snap.hasData)
+        if (!snap.hasData) {
           return const Center(child: CircularProgressIndicator());
+        }
         final d = snap.data;
-        if (d == null || d.isEmpty)
+        if (d == null || d.isEmpty) {
           return const Center(child: Text('Kullanıcı yok.'));
+        }
         final uid = (d['uid'] ?? '').toString();
         final user = (d['user'] is Map
             ? Map<String, dynamic>.from(d['user'] as Map)
@@ -981,8 +984,9 @@ class _UserDataCardState extends State<_UserDataCard> {
                     : () => _doAction(() async {
                           final ok =
                               await _confirm(context, 'SÜRESİZ BANLANSIN MI?');
-                          if (ok == true)
+                          if (ok == true) {
                             await _strikeUser(uid: widget.uid, level: 'ban');
+                          }
                         }),
                 child: const Text('SÜRESİZ BAN'),
               ),

@@ -5,8 +5,9 @@ class AppParchmentSheet extends StatelessWidget {
   const AppParchmentSheet({super.key, required this.type});
 
   String get _assetPath {
-    if (type == 'diamond')
+    if (type == 'diamond') {
       return 'assets/images/parchments/diamond_parchment.png';
+    }
     switch (type) {
       case 'royal':
         return 'assets/images/parchments/parchment_royal.png';

@@ -32,8 +32,9 @@ class _SohbetEkraniState extends State<SohbetEkrani> {
     super.initState();
     if (Platform.isAndroid) _secure.invokeMethod('enable');
     final meId = fb.FirebaseAuth.instance.currentUser?.uid;
-    if (meId != null)
+    if (meId != null) {
       ChatService.markConversationRead(convId: widget.convId, userId: meId);
+    }
   }
 
   @override

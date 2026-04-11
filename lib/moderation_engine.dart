@@ -177,20 +177,23 @@ class ModerationEngine {
   static bool _hasUrlLike(String lower) {
     if (lower.contains('http://') ||
         lower.contains('https://') ||
-        lower.contains('www.'))
+        lower.contains('www.')) {
       return true;
+    }
 
     if (RegExp(
       r'\b([a-z0-9-]+\.)+(com|net|org|io|gg|me|co|app|dev|site|link)\b',
-    ).hasMatch(lower))
+    ).hasMatch(lower)) {
       return true;
+    }
 
     if (lower.contains('t.me/') ||
         lower.contains('telegram.me/') ||
         lower.contains('wa.me/') ||
         lower.contains('chat.whatsapp.com/') ||
-        lower.contains('discord.gg/'))
+        lower.contains('discord.gg/')) {
       return true;
+    }
 
     return false;
   }

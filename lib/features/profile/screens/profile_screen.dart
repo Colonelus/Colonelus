@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
+import 'package:google_sign_in/google_sign_in.dart';
 import '../../auth/services/auth_profile_service.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -15,6 +16,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _logout() async {
     setState(() => _busy = true);
+    await GoogleSignIn().signOut();
     await fb.FirebaseAuth.instance.signOut();
     if (mounted) Navigator.of(context).pushReplacementNamed('/auth');
   }
@@ -26,6 +28,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       await AuthProfileService.deleteAccountAndData(user.uid);
       await user.delete();
+      await GoogleSignIn().signOut();
       if (mounted) Navigator.of(context).pushReplacementNamed('/auth');
     } catch (e) {
       if (!mounted) return;
