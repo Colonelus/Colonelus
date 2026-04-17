@@ -1,6 +1,8 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-enum BlockReason { contactHard, contactIntent, profanity, rateLimit }
+enum BlockReason { profanity, rateLimit }
 
 class ModerationResult {
   final bool blocked;
@@ -41,59 +43,47 @@ class ModerationEngine {
   static const int _maxItems = 5;
   static final Map<String, List<ContactIntentBufferEntry>> _buffer = {};
 
-  static const Set<String> _platformTokens = {
-    'instagram',
-    'insta',
-    'telegram',
-    'whatsapp',
-    'snapchat',
-    'snap',
+  static const List<String> _suspectKeywords = [
+    'c31k',
+    'tetikçi',
+    'tetikci',
+    'okul',
+    'baskın',
+    'baskin',
+    'silah',
+    'pompalı',
+    'pompali',
+    'katliam',
     'discord',
-  };
+    'dc',
+    'telegram',
+    'tg',
+    'tgram',
+  ];
 
-  static const Set<String> _shortCodes = {'ig', 'tg', 'wp', 'dc'};
+  static void _logIfSuspect(String text) {
+    final lowerText = text.toLowerCase();
+    final cleanText = _mapLeet(_stripDiacriticsTr(lowerText));
 
-  static const Set<String> _actionTokens = {
-    'ekle',
-    'ekleyin',
-    'ekler',
-    'eklerim',
-    'eklesene',
-    'yaz',
-    'yazsana',
-    'mesaj',
-    'dm',
-    'ozelden',
-    'ozel',
-    'takip',
-    'takipet',
-    'ulas',
-    'ulasalim',
-    'ulaş',
-    'ulaşalım',
-    'ara',
-    'at',
-    'atsana',
-    'gonder',
-    'gönder',
-  };
+    final hasSuspect = _suspectKeywords.any(
+      (word) => cleanText.contains(word) || lowerText.contains(word),
+    );
 
-  static const Set<String> _idTokens = {
-    'id',
-    'nick',
-    'nickname',
-    'kullanici',
-    'kullaniciadi',
-    'kullanıcı',
-    'kullanıcıadı',
-    'username',
-    'user',
-    'hesap',
-    'hesabim',
-    'hesabım',
-    'hesabin',
-    'hesabın',
-  };
+    if (hasSuspect) {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid != null) {
+        FirebaseFirestore.instance
+            .collection('suspect_logs')
+            .add({
+              'uid': uid,
+              'content': text,
+              'timestamp': FieldValue.serverTimestamp(),
+              'isReviewed': false,
+            })
+            .catchError((e) => debugPrint(e.toString()));
+      }
+    }
+  }
 
   static String _stripDiacriticsTr(String s) {
     return s
@@ -170,88 +160,11 @@ class ModerationEngine {
         .toList();
   }
 
-  static bool _hasEmail(String lower) {
-    return RegExp(r'[\w\.\-]+@[\w\.\-]+\.\w+').hasMatch(lower);
-  }
-
-  static bool _hasUrlLike(String lower) {
-    if (lower.contains('http://') ||
-        lower.contains('https://') ||
-        lower.contains('www.')) {
-      return true;
-    }
-
-    if (RegExp(
-      r'\b([a-z0-9-]+\.)+(com|net|org|io|gg|me|co|app|dev|site|link)\b',
-    ).hasMatch(lower)) {
-      return true;
-    }
-
-    if (lower.contains('t.me/') ||
-        lower.contains('telegram.me/') ||
-        lower.contains('wa.me/') ||
-        lower.contains('chat.whatsapp.com/') ||
-        lower.contains('discord.gg/')) {
-      return true;
-    }
-
-    return false;
-  }
-
-  static bool _hasPhoneLike(String text) {
-    final onlyNumbers = text.replaceAll(RegExp(r'[^0-9]'), '');
-    return onlyNumbers.length >= 10;
-  }
-
-  static int _intentScore(String combined) {
-    final tokens = tokenize(combined);
-    var score = 0;
-
-    final hasPlatform = tokens.any(_platformTokens.contains);
-    final hasShort = tokens.any(_shortCodes.contains);
-    final hasAction = tokens.any(_actionTokens.contains);
-    final hasIdToken = tokens.any(_idTokens.contains);
-
-    final hasAtHandle = RegExp(r'@[\w\.]{3,}').hasMatch(combined.toLowerCase());
-    final hasLabelHandle = RegExp(
-      r'\b(ig|insta|instagram|tg|telegram|wp|whatsapp|dc|discord)\s*[:\-]\s*[\w\.]{3,}\b',
-    ).hasMatch(combined.toLowerCase());
-    final hasShortThenName = RegExp(
-      r'\b(ig|tg|wp|dc)\s+[\w\.]{3,}\b',
-    ).hasMatch(combined.toLowerCase());
-    final hasShortDigits = tokens.any((t) => RegExp(r'^\d{3,6}\$').hasMatch(t));
-
-    if (hasPlatform) score += 2;
-    if (hasShort) score += 1;
-    if (hasAction) score += 2;
-
-    if (hasAtHandle || hasLabelHandle || hasIdToken || hasShortThenName) {
-      score += 3;
-    } else if (hasShortDigits) {
-      score += 2;
-    }
-
-    final anchor = hasPlatform || hasShort;
-    final intent = hasAction || hasAtHandle || hasLabelHandle || hasIdToken;
-    if (anchor && intent) score += 2;
-
-    return score;
-  }
-
   static ModerationResult evaluateSingle({
     required String text,
     required bool Function(String) profanityCheck,
   }) {
-    final lower = _stripDiacriticsTr(text.toLowerCase());
-
-    if (_hasPhoneLike(text) || _hasEmail(lower) || _hasUrlLike(lower)) {
-      return const ModerationResult(
-        true,
-        BlockReason.contactHard,
-        "Paylaşım engellendi",
-        "İletişim bilgisi veya bağlantı tespit edildi. Sohbeti uygulama içinde tutmalısın.",
-      );
-    }
+    _logIfSuspect(text);
 
     if (profanityCheck(text)) {
       return const ModerationResult(
@@ -259,16 +172,6 @@ class ModerationEngine {
         BlockReason.profanity,
         "Mesaj engellendi",
         "Uygunsuz veya kırıcı içerik tespit edildi.",
-      );
-    }
-
-    final score = _intentScore(text);
-    if (score >= 4) {
-      return const ModerationResult(
-        true,
-        BlockReason.contactIntent,
-        "Mesaj gönderilemedi",
-        "Başka platformlara yönlendirme algılandı. Güvenlik nedeniyle bu mesaj iletilemedi.",
       );
     }
 
@@ -288,37 +191,6 @@ class ModerationEngine {
     if (single.blocked) {
       _buffer.remove(scope);
       return single;
-    }
-
-    if (list.isEmpty) {
-      list.add(ContactIntentBufferEntry(text, now));
-      return single;
-    }
-
-    final combined = [...list.map((e) => e.text), text].join(' ').trim();
-    final lowerCombined = _stripDiacriticsTr(combined.toLowerCase());
-
-    if (_hasPhoneLike(combined) ||
-        _hasEmail(lowerCombined) ||
-        _hasUrlLike(lowerCombined)) {
-      _buffer.remove(scope);
-      return const ModerationResult(
-        true,
-        BlockReason.contactHard,
-        "Paylaşım engellendi",
-        "İletişim bilgisi veya bağlantı tespit edildi. Sohbeti uygulama içinde tutmalısın.",
-      );
-    }
-
-    final score = _intentScore(combined);
-    if (score >= 4) {
-      _buffer.remove(scope);
-      return const ModerationResult(
-        true,
-        BlockReason.contactIntent,
-        "Mesaj gönderilemedi",
-        "Başka platformlara yönlendirme algılandı. Güvenlik nedeniyle bu mesaj iletilemedi.",
-      );
     }
 
     list.add(ContactIntentBufferEntry(text, now));

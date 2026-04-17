@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/constants/app_enums.dart';
+import '../../../core/utils/filter_service.dart';
 
 class ChatService {
   static final _db = FirebaseFirestore.instance;
@@ -21,6 +22,7 @@ class ChatService {
     return _db
         .collection('conversations')
         .where('memberIds', arrayContains: uid)
+        .where('isDeleted', isEqualTo: false)
         .snapshots()
         .map((snap) {
           return snap.docs.where((doc) {
@@ -61,8 +63,29 @@ class ChatService {
     return _db
         .collection('conversations')
         .where('memberIds', arrayContains: uid)
+        .where('isDeleted', isEqualTo: false)
         .orderBy('lastAt', descending: true)
         .limit(80)
+        .snapshots();
+  }
+
+  static Stream<List<String>> blockedIdsStream(String myId) {
+    return _db
+        .collection('users')
+        .doc(myId)
+        .collection('blocks')
+        .snapshots()
+        .map((snap) => snap.docs.map((d) => d.id).toList());
+  }
+
+  static Stream<QuerySnapshot<Map<String, dynamic>>> blockedUsersFullStream(
+    String myId,
+  ) {
+    return _db
+        .collection('users')
+        .doc(myId)
+        .collection('blocks')
+        .orderBy('createdAt', descending: true)
         .snapshots();
   }
 
@@ -72,6 +95,13 @@ class ChatService {
   }) async {
     await _db.collection('conversations').doc(convId).update({
       'unreadBy.$userId': 0,
+    });
+  }
+
+  static Future<void> deleteConversationForBothSides(String convId) async {
+    await _db.collection('conversations').doc(convId).update({
+      'isDeleted': true,
+      'deletedAt': FieldValue.serverTimestamp(),
     });
   }
 
@@ -95,6 +125,8 @@ class ChatService {
         safeFirstMessageText.isEmpty ||
         safeSecretAuthorId == safeRequesterId)
       return;
+
+    FilterService.checkAndReport(safeFirstMessageText, safeRequesterId);
 
     final batch = _db.batch();
     final now = FieldValue.serverTimestamp();
@@ -185,6 +217,7 @@ class ChatService {
         'lastAt': now,
         'lastText': firstMsg,
         'unreadBy': {req['secretAuthorId']: 0, req['requesterId']: 1},
+        'isDeleted': false,
       });
 
       tx.set(convRef.collection('messages').doc(_rid('msg')), {
@@ -258,6 +291,8 @@ class ChatService {
     required String senderId,
     required String text,
   }) async {
+    FilterService.checkAndReport(text, senderId, chatId: convId);
+
     final convRef = _db.collection('conversations').doc(convId);
     await _db.runTransaction((tx) async {
       final convSnap = await tx.get(convRef);
@@ -292,8 +327,6 @@ class ChatService {
           "otherId": otherId,
           "otherName": otherName,
           "createdAt": FieldValue.serverTimestamp(),
-          "banned": false,
-          "suspendedUntil": null,
         });
   }
 
@@ -340,21 +373,25 @@ class ChatService {
     String? convId,
     String? snapshotText,
   }) async {
-    if (reason.trim().isEmpty) return;
+    final String safeReason = reason.trim();
+    if (safeReason.isEmpty) return;
+
+    final String finalReason = safeReason.length > 120
+        ? safeReason.substring(0, 120)
+        : safeReason;
+
     await _db.collection('reports').doc(_rid("rep")).set({
       "reporterId": reporterId,
       "reporterName": reporterName,
       "targetId": targetId,
       "targetName": targetName,
       "targetType": targetType,
-      "reason": reason.length > 120 ? reason.substring(0, 120) : reason,
+      "reason": finalReason,
       "secretId": secretId,
       "convId": convId,
       "snapshotText": snapshotText,
       "status": "open",
       "createdAt": FieldValue.serverTimestamp(),
-      "banned": false,
-      "suspendedUntil": null,
     });
   }
 }

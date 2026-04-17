@@ -12,14 +12,35 @@ class FeedService {
         .where('banned', isEqualTo: false)
         .where('createdAt', isGreaterThan: since)
         .orderBy('createdAt', descending: true)
-        .limit(20)
+        .limit(60)
         .snapshots();
   }
 
-  static Stream<List<Map<String, dynamic>>> getFeedStream() {
-    return secretsStream().map((snap) {
-      return snap.docs.map((d) => {"id": d.id, ...d.data()}).toList();
+  static Stream<List<Map<String, dynamic>>> getFeedStream(String uid) {
+    return secretsStream().asyncMap((snap) async {
+      final seenSnap = await _db
+          .collection('users')
+          .doc(uid)
+          .collection('seenSecrets')
+          .get();
+
+      final seenIds = seenSnap.docs.map((d) => d.id).toSet();
+
+      return snap.docs
+          .map((d) => {"id": d.id, ...d.data()})
+          .where((s) => !seenIds.contains(s['id']))
+          .take(20)
+          .toList();
     });
+  }
+
+  static Future<void> markAsSeen(String uid, String secretId) async {
+    await _db
+        .collection('users')
+        .doc(uid)
+        .collection('seenSecrets')
+        .doc(secretId)
+        .set({'at': FieldValue.serverTimestamp()});
   }
 
   static Stream<DocumentSnapshot<Map<String, dynamic>>> dropStream() {

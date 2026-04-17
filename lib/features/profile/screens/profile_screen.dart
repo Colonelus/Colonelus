@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../auth/services/auth_profile_service.dart';
+import '../../chat/services/chat_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   final Map<String, dynamic> me;
@@ -45,6 +47,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final rumuz = (widget.me['rumuz'] as String?) ?? "sırdaş";
     final isVip = (widget.me['isVip'] as bool?) ?? false;
     final inci = (widget.me['inci'] as int?) ?? 0;
+    final myId =
+        widget.me['uid'] ?? fb.FirebaseAuth.instance.currentUser?.uid ?? "";
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -80,6 +84,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(width: 16),
                 _stat("Durum", isVip ? "VIP" : "STD", Icons.verified),
               ],
+            ),
+            const SizedBox(height: 30),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white10,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                children: [
+                  ListTile(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EngellenenlerEkrani(myId: myId),
+                        ),
+                      );
+                    },
+                    leading: const Icon(
+                      Icons.person_off_outlined,
+                      color: Colors.redAccent,
+                    ),
+                    title: const Text("Engellenen Sırdaşlar"),
+                    trailing: const Icon(
+                      Icons.chevron_right,
+                      color: Colors.white24,
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 40),
             SizedBox(
@@ -123,4 +157,75 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ],
     ),
   );
+}
+
+class EngellenenlerEkrani extends StatelessWidget {
+  final String myId;
+  const EngellenenlerEkrani({super.key, required this.myId});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF001B2E),
+      appBar: AppBar(
+        title: const Text("Engellenenler"),
+        backgroundColor: const Color(0xFF001B2E),
+        elevation: 0,
+      ),
+      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: ChatService.blockedUsersFullStream(myId),
+        builder: (context, snap) {
+          if (snap.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final docs = snap.data?.docs ?? [];
+          if (docs.isEmpty) {
+            return const Center(
+              child: Text(
+                "Henüz kimseyi engellemedin.",
+                style: TextStyle(color: Colors.white54),
+              ),
+            );
+          }
+
+          return ListView.separated(
+            padding: const EdgeInsets.all(10),
+            itemCount: docs.length,
+            separatorBuilder: (context, index) =>
+                const Divider(color: Colors.white10),
+            itemBuilder: (context, i) {
+              final data = docs[i].data();
+              final String otherId = data['otherId'] ?? "";
+              final String otherName = data['otherName'] ?? "sırdaş";
+
+              return ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Colors.white10,
+                  child: Icon(
+                    Icons.person_off,
+                    color: Colors.redAccent,
+                    size: 20,
+                  ),
+                ),
+                title: Text(otherName),
+                trailing: TextButton(
+                  onPressed: () async {
+                    await ChatService.unblockUser(
+                      ownerId: myId,
+                      otherId: otherId,
+                    );
+                  },
+                  child: const Text(
+                    "KALDIR",
+                    style: TextStyle(color: Colors.cyanAccent),
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
 }

@@ -8,16 +8,24 @@ import 'features/auth/screens/login_screen.dart';
 import 'features/sea/screens/sea_view_screen.dart';
 import 'features/sea/screens/write_secret_screen.dart';
 import 'features/chat/screens/chat_center_screen.dart';
+import 'features/chat/services/chat_service.dart';
 import 'features/market/screens/market_screen.dart';
 import 'features/profile/screens/profile_screen.dart';
 import 'features/auth/services/auth_profile_service.dart';
+import 'features/auth/services/auth_service.dart';
 import 'shared/widgets/sea_background.dart';
 import 'features/market/services/revenue_cat_service.dart';
+import 'core/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  await RevenueCatService.init();
+
+  RevenueCatService.init();
+  NotificationService.init().then((_) {
+    NotificationService.requestPermissions();
+  });
+
   runApp(const SirdasApp());
 }
 
@@ -63,6 +71,19 @@ class _AnaSayfaState extends State<AnaSayfa> {
   int _seciliSayfa = 0;
 
   @override
+  void initState() {
+    super.initState();
+    _guvenlikGuncelle();
+  }
+
+  void _guvenlikGuncelle() {
+    final user = fb.FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      AuthService.updateSecurityData(user.uid);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final user = fb.FirebaseAuth.instance.currentUser;
     if (user == null) return const AuthEkrani();
@@ -92,6 +113,7 @@ class _AnaSayfaState extends State<AnaSayfa> {
         if (isBanned || isSuspended) {
           return CezaEkrani(
             isBanned: isBanned,
+            isSuspended: isSuspended,
             suspendedUntil: suspendedUntil?.toDate(),
           );
         }
@@ -119,18 +141,24 @@ class _AnaSayfaState extends State<AnaSayfa> {
             backgroundColor: const Color(0xFF001B2E),
             selectedItemColor: Colors.cyanAccent,
             unselectedItemColor: Colors.white54,
-            items: const [
-              BottomNavigationBarItem(icon: Icon(Icons.waves), label: 'Deniz'),
-              BottomNavigationBarItem(
+            items: [
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.waves),
+                label: 'Deniz',
+              ),
+              const BottomNavigationBarItem(
                 icon: Icon(Icons.add_circle),
                 label: 'Sır Bırak',
               ),
-              BottomNavigationBarItem(icon: Icon(Icons.forum), label: 'Sohbet'),
               BottomNavigationBarItem(
+                icon: ChatBadgeIcon(uid: user.uid),
+                label: 'Sohbet',
+              ),
+              const BottomNavigationBarItem(
                 icon: Icon(Icons.shopping_bag),
                 label: 'Market',
               ),
-              BottomNavigationBarItem(
+              const BottomNavigationBarItem(
                 icon: Icon(Icons.person),
                 label: 'Profil',
               ),
@@ -142,11 +170,46 @@ class _AnaSayfaState extends State<AnaSayfa> {
   }
 }
 
+class ChatBadgeIcon extends StatelessWidget {
+  final String uid;
+  const ChatBadgeIcon({super.key, required this.uid});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<int>(
+      stream: ChatService.pendingRequestsCountStream(uid),
+      builder: (context, requestSnap) {
+        final rCount = requestSnap.data ?? 0;
+        return StreamBuilder<int>(
+          stream: ChatService.unreadConversationsCountStream(uid),
+          builder: (context, unreadSnap) {
+            final uCount = unreadSnap.data ?? 0;
+            final total = rCount + uCount;
+
+            return Badge(
+              label: Text(total.toString()),
+              isLabelVisible: total > 0,
+              backgroundColor: Colors.red,
+              child: const Icon(Icons.forum),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
 class CezaEkrani extends StatelessWidget {
   final bool isBanned;
+  final bool isSuspended;
   final DateTime? suspendedUntil;
 
-  const CezaEkrani({super.key, required this.isBanned, this.suspendedUntil});
+  const CezaEkrani({
+    super.key,
+    required this.isBanned,
+    required this.isSuspended,
+    this.suspendedUntil,
+  });
 
   @override
   Widget build(BuildContext context) {

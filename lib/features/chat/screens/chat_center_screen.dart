@@ -83,6 +83,67 @@ class _IncomingRequestsList extends StatelessWidget {
   final Map<String, dynamic> me;
   const _IncomingRequestsList({required this.uid, required this.me});
 
+  void _showReportOptions(
+    BuildContext context,
+    String requestId,
+    Map<String, dynamic> r,
+  ) {
+    final options = ["Taciz", "Tehdit", "Uygunsuz İçerik", "Spam", "Diğer"];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF001B2E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text(
+                  "Şikayet Sebebi Seçin",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+              ...options.map(
+                (option) => ListTile(
+                  title: Text(
+                    option,
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await ChatService.createReport(
+                      reporterId: uid,
+                      reporterName: me['username'] ?? "Sırdaş",
+                      targetId: r['requesterId'] ?? "",
+                      targetName: r['requesterName'] ?? "Sırdaş",
+                      targetType: "chat_request",
+                      reason: "$option: ${r['firstMessageText']}",
+                      secretId: r['secretId'],
+                    );
+                    await ChatService.rejectRequest(
+                      requestId: requestId,
+                      rejecterId: uid,
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -118,20 +179,7 @@ class _IncomingRequestsList extends StatelessWidget {
                       color: Colors.orangeAccent,
                       size: 22,
                     ),
-                    onPressed: () async {
-                      await ChatService.createReport(
-                        reporterId: uid,
-                        reporterName: me['username'] ?? "Sırdaş",
-                        targetId: r['requesterId'],
-                        targetName: r['requesterName'] ?? "Sırdaş",
-                        targetType: "chat_request",
-                        reason: "İstek Şikayeti: ${r['firstMessageText']}",
-                      );
-                      await ChatService.rejectRequest(
-                        requestId: requestId,
-                        rejecterId: uid,
-                      );
-                    },
+                    onPressed: () => _showReportOptions(context, requestId, r),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close, color: Colors.redAccent),

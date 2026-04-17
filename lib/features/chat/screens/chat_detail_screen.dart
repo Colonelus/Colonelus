@@ -3,10 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
-import 'package:intl/intl.dart';
 import '../services/chat_service.dart';
-import '../../../core/utils/filter_service.dart';
-import '../../../core/utils/rate_limiter.dart';
 
 class SohbetEkrani extends StatefulWidget {
   final String convId;
@@ -45,6 +42,71 @@ class _SohbetEkraniState extends State<SohbetEkrani> {
     super.dispose();
   }
 
+  void _showReportDialog(String meId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF001B2E),
+        title: const Text("Rapor Et", style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children:
+              [
+                    'Şiddet / Tehdit',
+                    'Taciz / Rahatsız Edici',
+                    'Dolandırıcılık',
+                    'Uygunsuz İçerik',
+                  ]
+                  .map(
+                    (reason) => ListTile(
+                      title: Text(
+                        reason,
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      onTap: () async {
+                        await ChatService.createReport(
+                          reporterId: meId,
+                          reporterName: "sırdaş",
+                          targetId: widget.otherId,
+                          targetName: widget.otherName,
+                          targetType: "chat_user",
+                          reason: reason,
+                          convId: widget.convId,
+                        );
+                        if (mounted) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Raporunuz iletildi."),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  )
+                  .toList(),
+        ),
+      ),
+    );
+  }
+
+  void _handleMenu(String val, String meId) async {
+    if (val == 'delete') {
+      await ChatService.deleteConversationForBothSides(widget.convId);
+      if (mounted) Navigator.pop(context);
+    } else if (val == 'report') {
+      _showReportDialog(meId);
+    } else if (val == 'block') {
+      await ChatService.blockUser(
+        ownerId: meId,
+        otherId: widget.otherId,
+        otherName: widget.otherName,
+      );
+      await ChatService.deleteConversationForBothSides(widget.convId);
+      if (mounted) Navigator.pop(context);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final meId = fb.FirebaseAuth.instance.currentUser!.uid;
@@ -53,6 +115,16 @@ class _SohbetEkraniState extends State<SohbetEkrani> {
       appBar: AppBar(
         title: Text(widget.otherName),
         backgroundColor: const Color(0xFF001B2E),
+        actions: [
+          PopupMenuButton<String>(
+            onSelected: (val) => _handleMenu(val, meId),
+            itemBuilder: (context) => [
+              const PopupMenuItem(value: 'delete', child: Text('Sohbeti Sil')),
+              const PopupMenuItem(value: 'report', child: Text('Raporla')),
+              const PopupMenuItem(value: 'block', child: Text('Engelle')),
+            ],
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -80,7 +152,10 @@ class _SohbetEkraniState extends State<SohbetEkrani> {
                           color: isMe ? Colors.cyan[800] : Colors.blueGrey[800],
                           borderRadius: BorderRadius.circular(15),
                         ),
-                        child: Text(m['text'] ?? ""),
+                        child: Text(
+                          m['text'] ?? "",
+                          style: const TextStyle(color: Colors.white),
+                        ),
                       ),
                     );
                   },
@@ -95,21 +170,26 @@ class _SohbetEkraniState extends State<SohbetEkrani> {
                 Expanded(
                   child: TextField(
                     controller: _c,
-                    decoration: const InputDecoration(hintText: "Mesaj..."),
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      hintText: "Mesaj...",
+                      hintStyle: TextStyle(color: Colors.white38),
+                      border: InputBorder.none,
+                    ),
                   ),
                 ),
                 IconButton(
                   onPressed: () async {
                     final t = _c.text.trim();
                     if (t.isEmpty) return;
+                    _c.clear();
                     await ChatService.sendMessage(
                       convId: widget.convId,
                       senderId: meId,
                       text: t,
                     );
-                    _c.clear();
                   },
-                  icon: const Icon(Icons.send),
+                  icon: const Icon(Icons.send, color: Colors.cyanAccent),
                 ),
               ],
             ),

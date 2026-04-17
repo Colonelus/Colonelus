@@ -4,6 +4,9 @@ import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {}
+
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _fln =
       FlutterLocalNotificationsPlugin();
@@ -12,59 +15,65 @@ class NotificationService {
   static Future<void> init() async {
     if (_inited) return;
 
-    final androidInit = const AndroidInitializationSettings(
-      '@mipmap/ic_launcher',
-    );
-    final iosInit = DarwinInitializationSettings(
+    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const iosInit = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
       requestSoundPermission: false,
     );
 
-    final initSettings = InitializationSettings(
+    const initSettings = InitializationSettings(
       android: androidInit,
       iOS: iosInit,
     );
 
     try {
-      await Function.apply(
-        (_fln as dynamic).initialize,
-        [initSettings],
-        {#onDidReceiveNotificationResponse: (dynamic r) async {}},
+      await (_fln as dynamic).initialize(
+        initSettings,
+        onDidReceiveNotificationResponse:
+            (NotificationResponse details) async {},
       );
-    } catch (_) {
-      await Function.apply((_fln as dynamic).initialize, [], {
-        #initializationSettings: initSettings,
-        #onDidReceiveNotificationResponse: (dynamic r) async {},
-      });
+    } catch (_) {}
+
+    if (Platform.isAndroid) {
+      const channel = AndroidNotificationChannel(
+        'sirdas_default',
+        'Sırdaş',
+        description: 'Sırdaş bildirimleri',
+        importance: Importance.max,
+        playSound: true,
+        sound: RawResourceAndroidNotificationSound('notif_sirdas'),
+      );
+
+      await (_fln as dynamic)
+          .resolvePlatformSpecificImplementation()
+          ?.createNotificationChannel(channel);
     }
 
+    _setupListeners();
     _inited = true;
+  }
+
+  static void _setupListeners() {
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      showFromMessage(message);
+    });
+
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+    FirebaseMessaging.instance.getToken().then(onToken);
+    FirebaseMessaging.instance.onTokenRefresh.listen(onToken);
   }
 
   static Future<void> requestPermissions() async {
     if (Platform.isIOS || Platform.isMacOS) {
-      try {
-        final impl = Function.apply(
-          (_fln as dynamic).resolvePlatformSpecificImplementation,
-          [],
-        );
-        if (impl != null) {
-          try {
-            await Function.apply((impl as dynamic).requestPermissions, [], {
-              #alert: true,
-              #badge: true,
-              #sound: true,
-            });
-          } catch (_) {
-            await Function.apply((impl as dynamic).requestPermissions, [
-              true,
-              true,
-              true,
-            ]);
-          }
-        }
-      } catch (_) {}
+      final dynamic impl = (_fln as dynamic)
+          .resolvePlatformSpecificImplementation();
+      if (impl != null) {
+        try {
+          await impl.requestPermissions(alert: true, badge: true, sound: true);
+        } catch (_) {}
+      }
     }
 
     await FirebaseMessaging.instance.requestPermission(
@@ -117,7 +126,7 @@ class NotificationService {
       sound: const RawResourceAndroidNotificationSound('notif_sirdas'),
     );
 
-    final iosDetails = const DarwinNotificationDetails(presentSound: true);
+    const iosDetails = DarwinNotificationDetails(presentSound: true);
 
     final details = NotificationDetails(
       android: androidDetails,
@@ -126,19 +135,7 @@ class NotificationService {
     final id = DateTime.now().millisecondsSinceEpoch.remainder(2147483647);
 
     try {
-      await Function.apply(
-        (_fln as dynamic).show,
-        [id, title, body, details],
-        {#payload: payload},
-      );
-    } catch (_) {
-      await Function.apply((_fln as dynamic).show, [], {
-        #id: id,
-        #title: title,
-        #body: body,
-        #notificationDetails: details,
-        #payload: payload,
-      });
-    }
+      await (_fln as dynamic).show(id, title, body, details, payload: payload);
+    } catch (_) {}
   }
 }

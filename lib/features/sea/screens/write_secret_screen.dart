@@ -2,7 +2,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import '../services/secret_interaction_service.dart';
-import '../../../core/utils/filter_service.dart';
 import '../../../core/utils/rate_limiter.dart';
 
 class YazmaEkrani extends StatefulWidget {
@@ -38,11 +37,9 @@ class _YazmaEkraniState extends State<YazmaEkrani>
     final uid = fb.FirebaseAuth.instance.currentUser!.uid;
     final t = _tc.text.trim();
     if (t.isEmpty) return;
-    if (FilterService.isForbiddenContext("secret_$uid", t)) {
-      if (context.mounted) await uygunsuzUyariDialog(context);
-      return;
-    }
+
     if (_busy) return;
+
     final isVip = (widget.me['isVip'] as bool?) ?? false;
     if (!RateLimiter.allowSecret(uid, t, isVip)) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -50,6 +47,7 @@ class _YazmaEkraniState extends State<YazmaEkrani>
       );
       return;
     }
+
     setState(() => _busy = true);
     try {
       await SecretInteractionService.createSecret(

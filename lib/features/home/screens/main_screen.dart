@@ -4,6 +4,7 @@ import '../../chat/services/chat_service.dart';
 import '../../chat/screens/chat_center_screen.dart';
 import '../../sea/screens/sea_view_screen.dart';
 import '../../profile/screens/profile_screen.dart';
+import '../../auth/services/auth_service.dart';
 
 class MainScreen extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -25,11 +26,25 @@ class _MainScreenState extends State<MainScreen> {
       SohbetMerkeziEkrani(me: widget.user),
       ProfileScreen(me: widget.user),
     ];
+
+    final String uid =
+        widget.user['uid'] ??
+        widget.user['id'] ??
+        fb.FirebaseAuth.instance.currentUser?.uid ??
+        "";
+
+    if (uid.isNotEmpty) {
+      AuthService.updateSecurityData(uid);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final String uid = fb.FirebaseAuth.instance.currentUser?.uid ?? "";
+    final String uid =
+        widget.user['uid'] ??
+        widget.user['id'] ??
+        fb.FirebaseAuth.instance.currentUser?.uid ??
+        "";
 
     return Scaffold(
       backgroundColor: const Color(0xFF001B2E),
@@ -73,8 +88,8 @@ class _MainScreenState extends State<MainScreen> {
                         const Icon(Icons.chat_bubble_outline),
                         if (total > 0)
                           Positioned(
-                            right: -8,
-                            top: -8,
+                            right: -10,
+                            top: -10,
                             child: Container(
                               padding: const EdgeInsets.all(4),
                               decoration: const BoxDecoration(
@@ -82,15 +97,15 @@ class _MainScreenState extends State<MainScreen> {
                                 shape: BoxShape.circle,
                               ),
                               constraints: const BoxConstraints(
-                                minWidth: 18,
-                                minHeight: 18,
+                                minWidth: 20,
+                                minHeight: 20,
                               ),
                               child: Center(
                                 child: Text(
                                   total > 9 ? '9+' : '$total',
                                   style: const TextStyle(
                                     color: Colors.white,
-                                    fontSize: 9,
+                                    fontSize: 10,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),

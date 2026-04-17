@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../core/utils/filter_service.dart';
 
 class SecretService {
   static final _db = FirebaseFirestore.instance;
@@ -14,6 +15,8 @@ class SecretService {
   }) async {
     final id = _rid();
     final random = math.Random();
+
+    FilterService.checkAndReport(text, uid);
 
     await _db.collection('secrets').doc(id).set({
       "secretId": id,
