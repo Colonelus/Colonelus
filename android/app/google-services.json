@@ -30,6 +30,14 @@
           }
         },
         {
+          "client_id": "458930834462-emb9f5s6m2m3lhqp0scnebl9ittk4pbn.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.colonelus.sirdas",
+            "certificate_hash": "9dca12e2362b5c3610049098fb05a30f2ad9a664"
+          }
+        },
+        {
           "client_id": "458930834462-ssdtti15dpc59qfc1fc841qnsuunabnh.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

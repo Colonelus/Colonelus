@@ -123,8 +123,9 @@ class ChatService {
         safeSecretAuthorId.isEmpty ||
         safeRequesterId.isEmpty ||
         safeFirstMessageText.isEmpty ||
-        safeSecretAuthorId == safeRequesterId)
+        safeSecretAuthorId == safeRequesterId) {
       return;
+    }
 
     FilterService.checkAndReport(safeFirstMessageText, safeRequesterId);
 
@@ -198,8 +199,9 @@ class ChatService {
       if (!reqSnap.exists) return null;
       final req = reqSnap.data()!;
       if (req['status'] != RequestStatus.pending.name ||
-          req['secretAuthorId'] != accepterId)
+          req['secretAuthorId'] != accepterId) {
         return null;
+      }
 
       final convId = _rid('conv');
       final convRef = _db.collection('conversations').doc(convId);
@@ -245,8 +247,9 @@ class ChatService {
       final d = snap.data();
       if (d == null ||
           d['status'] != RequestStatus.pending.name ||
-          d['secretAuthorId'] != rejecterId)
+          d['secretAuthorId'] != rejecterId) {
         return;
+      }
       tx.update(ref, {
         "status": RequestStatus.rejected.name,
         "decisionAt": FieldValue.serverTimestamp(),
@@ -264,8 +267,9 @@ class ChatService {
       final d = snap.data();
       if (d == null ||
           d['status'] != RequestStatus.pending.name ||
-          d['requesterId'] != requesterId)
+          d['requesterId'] != requesterId) {
         return;
+      }
       tx.update(ref, {
         "status": RequestStatus.cancelled.name,
         "decisionAt": FieldValue.serverTimestamp(),

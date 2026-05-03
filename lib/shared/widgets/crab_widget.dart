@@ -42,9 +42,9 @@ class _CrabWidgetState extends State<CrabWidget> {
         Container(
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.deepPurple.withAlpha(80),
+            color: Colors.deepPurple.withValues(alpha: 0.3),
             border: Border.all(
-              color: Colors.cyanAccent.withAlpha(160),
+              color: Colors.cyanAccent.withValues(alpha: 0.6),
               width: 2,
             ),
           ),

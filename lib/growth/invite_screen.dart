@@ -36,11 +36,11 @@ class _InviteScreenState extends State<InviteScreen> {
     setState(() => _busy = true);
     try {
       final text = await _service.buildShareText();
+      // ignore: deprecated_member_use
       await Share.share(text);
-    } finally {
-      if (mounted) {
-        setState(() => _busy = false);
-      }
+      if (mounted) setState(() => _busy = false);
+    } catch (_) {
+      if (mounted) setState(() => _busy = false);
     }
   }
 

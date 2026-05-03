@@ -33,20 +33,19 @@ class _ViralLoopHubScreenState extends State<ViralLoopHubScreen> {
         previewText: widget.previewText,
         source: 'viral_loop_hub',
       );
-      if (!mounted) return;
-      setState(() {
-        _status = 'Paylaşım hazır.';
-      });
+      if (mounted) {
+        setState(() {
+          _status = 'Paylaşım hazır.';
+          _busy = false;
+        });
+      }
     } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _status = 'Paylaşım oluşturulamadı.';
-      });
-    } finally {
-      if (!mounted) return;
-      setState(() {
-        _busy = false;
-      });
+      if (mounted) {
+        setState(() {
+          _status = 'Paylaşım oluşturulamadı.';
+          _busy = false;
+        });
+      }
     }
   }
 
@@ -59,20 +58,19 @@ class _ViralLoopHubScreenState extends State<ViralLoopHubScreen> {
       final ok = await ViralLoopService.instance.claimPendingShareAttribution(
         trigger: 'hub_claim',
       );
-      if (!mounted) return;
-      setState(() {
-        _status = ok ? 'Davet bağlantısı işlendi.' : 'Bekleyen bağlantı bulunamadı.';
-      });
+      if (mounted) {
+        setState(() {
+          _status = ok ? 'Davet bağlantısı işlendi.' : 'Bekleyen bağlantı bulunamadı.';
+          _claimBusy = false;
+        });
+      }
     } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _status = 'İşlem başarısız oldu.';
-      });
-    } finally {
-      if (!mounted) return;
-      setState(() {
-        _claimBusy = false;
-      });
+      if (mounted) {
+        setState(() {
+          _status = 'İşlem başarısız oldu.';
+          _claimBusy = false;
+        });
+      }
     }
   }
 
@@ -85,20 +83,19 @@ class _ViralLoopHubScreenState extends State<ViralLoopHubScreen> {
       final ok = await ViralLoopService.instance.qualifyPendingShareAttribution(
         trigger: 'hub_qualify',
       );
-      if (!mounted) return;
-      setState(() {
-        _status = ok ? 'Ödül akışı tetiklendi.' : 'Bekleyen growth kaydı bulunamadı.';
-      });
+      if (mounted) {
+        setState(() {
+          _status = ok ? 'Ödül akışı tetiklendi.' : 'Bekleyen growth kaydı bulunamadı.';
+          _qualifyBusy = false;
+        });
+      }
     } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _status = 'Ödül akışı başlatılamadı.';
-      });
-    } finally {
-      if (!mounted) return;
-      setState(() {
-        _qualifyBusy = false;
-      });
+      if (mounted) {
+        setState(() {
+          _status = 'Ödül akışı başlatılamadı.';
+          _qualifyBusy = false;
+        });
+      }
     }
   }
 

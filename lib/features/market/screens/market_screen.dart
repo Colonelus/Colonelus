@@ -39,7 +39,7 @@ class _MarketEkraniState extends State<MarketEkrani>
         'pearl_120',
         'pearl_300',
         'pearl_700',
-      ], type: PurchaseType.inapp);
+      ]);
 
       incis.sort((a, b) => a.price.compareTo(b.price));
 
@@ -64,6 +64,7 @@ class _MarketEkraniState extends State<MarketEkrani>
       if (activeVip != null &&
           activeVip.isActive &&
           package.packageType != PackageType.unknown) {
+        // ignore: deprecated_member_use
         result = await Purchases.purchasePackage(
           package,
           googleProductChangeInfo: GoogleProductChangeInfo(
@@ -72,6 +73,7 @@ class _MarketEkraniState extends State<MarketEkrani>
           ),
         );
       } else {
+        // ignore: deprecated_member_use
         result = await Purchases.purchasePackage(package);
       }
 
@@ -96,6 +98,7 @@ class _MarketEkraniState extends State<MarketEkrani>
   Future<void> _buyStoreProduct(StoreProduct product) async {
     setState(() => _busy = true);
     try {
+      // ignore: deprecated_member_use
       await Purchases.purchaseStoreProduct(product);
 
       final String id = product.identifier;
@@ -139,6 +142,7 @@ class _MarketEkraniState extends State<MarketEkrani>
     final currentInci = (userSnap.data()?['inci'] as int?) ?? 0;
 
     if (currentInci < price) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Yetersiz İnci!')));
@@ -151,6 +155,7 @@ class _MarketEkraniState extends State<MarketEkrani>
         'inci': FieldValue.increment(-price),
         'ownedBottles': FieldValue.arrayUnion([bottleId]),
       });
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Şişe satın alındı!')));
@@ -322,7 +327,7 @@ class _MarketEkraniState extends State<MarketEkrani>
       decoration: BoxDecoration(
         color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _borderColor.withOpacity(0.4)),
+        border: Border.all(color: _borderColor.withValues(alpha: 0.4)),
       ),
       child: Column(
         children: [
@@ -331,7 +336,7 @@ class _MarketEkraniState extends State<MarketEkrani>
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: _borderColor.withOpacity(0.2),
+                  color: _borderColor.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -395,9 +400,9 @@ class _MarketEkraniState extends State<MarketEkrani>
         width: 105,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
+          color: Colors.white.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: _borderColor.withOpacity(0.3)),
+          border: Border.all(color: _borderColor.withValues(alpha: 0.3)),
         ),
         child: Column(
           children: [
@@ -565,7 +570,7 @@ class _AtesBocegiEfektiState extends State<AtesBocegiEfekti>
                         color: widget.renk,
                         boxShadow: [
                           BoxShadow(
-                            color: widget.renk.withOpacity(0.5),
+                            color: widget.renk.withValues(alpha: 0.5),
                             blurRadius: size * 2,
                             spreadRadius: size / 2,
                           ),

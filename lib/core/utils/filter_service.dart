@@ -402,7 +402,12 @@ class FilterService {
           'timestamp': FieldValue.serverTimestamp(),
           'status': 'active_investigation',
         })
-        .catchError((_) {});
+        .catchError((error) {
+          // Geriye 'DocumentReference' tipinde bir sey donmesi beklendigi icin
+          // hatayi yuttuktan sonra bu Future'i throw ile sonlandirmali veya baska sekilde kapatmaliyiz.
+          // En temizi hatayi firlatip disarda yakalamaktir ama burada basitce throw yapiyoruz.
+          throw error;
+        });
   }
 
   static bool isForbiddenContext(String key, String text) => false;

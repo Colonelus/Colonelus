@@ -62,6 +62,7 @@ class _YazmaEkraniState extends State<YazmaEkrani>
         FocusScope.of(context).unfocus();
       });
     } catch (_) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text("Gönderilemedi.")));

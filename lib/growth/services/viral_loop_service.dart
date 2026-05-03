@@ -77,6 +77,7 @@ class ViralLoopService {
       name: 'secret_share_link_created',
       parameters: {'secret_id': secretId, 'source': source ?? 'app'},
     );
+    // ignore: deprecated_member_use
     await Share.share('$previewText\n\n$url');
     await _analytics.logEvent(
       name: 'secret_share_sheet_opened',

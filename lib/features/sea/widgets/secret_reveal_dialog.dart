@@ -126,8 +126,9 @@ Future<void> sirriYakalaDialogGoster({
                             ).showSnackBar(SnackBar(content: Text('Hata: $e')));
                           }
                         } finally {
-                          if (context.mounted)
+                          if (context.mounted) {
                             setState(() => isSending = false);
+                          }
                         }
                       },
                 style: ElevatedButton.styleFrom(

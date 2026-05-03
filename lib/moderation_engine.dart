@@ -80,7 +80,10 @@ class ModerationEngine {
               'timestamp': FieldValue.serverTimestamp(),
               'isReviewed': false,
             })
-            .catchError((e) => debugPrint(e.toString()));
+            .catchError((e) {
+              debugPrint(e.toString());
+              throw e;
+            });
       }
     }
   }

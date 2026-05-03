@@ -95,7 +95,7 @@ class BillingService {
     );
 
     if (response.error != null) {
-      throw Exception(response.error!.message ?? 'query-failed');
+      throw Exception(response.error!.message);
     }
 
     final List<VipPlan> plans = <VipPlan>[];

@@ -216,6 +216,7 @@ class _DenizAkisiEkraniState extends State<DenizAkisiEkrani>
         me: widget.me,
         onSink: () async {
           await FeedService.markAsSeen(uid, s['id']);
+          if (!mounted) return;
           setState(() {
             _sinking[s['id']] = true;
             _sinkStart[s['id']] = _nowMs;
@@ -320,7 +321,7 @@ class _AtesBocegiEfektiState extends State<AtesBocegiEfekti>
                         color: widget.renk,
                         boxShadow: [
                           BoxShadow(
-                            color: widget.renk.withOpacity(0.5),
+                            color: widget.renk.withValues(alpha: 0.5),
                             blurRadius: size * 2,
                             spreadRadius: size / 2,
                           ),

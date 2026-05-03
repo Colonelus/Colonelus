@@ -42,7 +42,7 @@ class _DropDialogState extends State<DropDialog> {
       backgroundColor: const Color(0xFF001B2E),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: Colors.cyanAccent.withOpacity(0.5)),
+        side: BorderSide(color: Colors.cyanAccent.withValues(alpha: 0.5)),
       ),
       title: const Text(
         "Sürpriz Kutu",
@@ -90,7 +90,7 @@ class _DropDialogState extends State<DropDialog> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.cyanAccent.withOpacity(0.2),
+              backgroundColor: Colors.cyanAccent.withValues(alpha: 0.2),
               side: const BorderSide(color: Colors.cyanAccent),
             ),
             onPressed: _open,

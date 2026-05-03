@@ -42,28 +42,30 @@ class _CrabWidgetState extends State<CrabWidget>
     setState(() => _isClaiming = true);
     try {
       int reward = await CrabService.claimCrab();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.auto_awesome, color: Colors.yellowAccent),
-                const SizedBox(width: 10),
-                Text(
-                  'Yakaladın! +$reward İnci',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            backgroundColor: const Color(0xFF001B2E),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(15),
-              side: const BorderSide(color: Colors.cyanAccent),
-            ),
+      
+      // Context kullanımı öncesi mounted kontrolü
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.auto_awesome, color: Colors.yellowAccent),
+              const SizedBox(width: 10),
+              Text(
+                'Yakaladın! +$reward İnci',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
           ),
-        );
-      }
+          backgroundColor: const Color(0xFF001B2E),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+            side: const BorderSide(color: Colors.cyanAccent),
+          ),
+        ),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -120,10 +122,11 @@ class _CrabWidgetState extends State<CrabWidget>
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: const Color(0xFF1A237E).withOpacity(0.8),
+                      // Modern withValues kullanımı
+                      color: const Color(0xFF1A237E).withValues(alpha: 0.8),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.cyanAccent.withOpacity(0.6),
+                          color: Colors.cyanAccent.withValues(alpha: 0.6),
                           blurRadius: 20,
                           spreadRadius: 2,
                         ),

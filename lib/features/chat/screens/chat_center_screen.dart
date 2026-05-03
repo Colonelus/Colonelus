@@ -150,10 +150,11 @@ class _IncomingRequestsList extends StatelessWidget {
       stream: ChatService.incomingRequestsStream(uid),
       builder: (context, snap) {
         final docs = snap.data?.docs ?? [];
-        if (docs.isEmpty)
+        if (docs.isEmpty) {
           return const Center(
             child: Text("İstek yok.", style: TextStyle(color: Colors.white38)),
           );
+        }
         return ListView.builder(
           itemCount: docs.length,
           itemBuilder: (c, i) {
@@ -229,10 +230,11 @@ class _ConversationsList extends StatelessWidget {
       stream: ChatService.conversationsStream(uid),
       builder: (context, snap) {
         final docs = snap.data?.docs ?? [];
-        if (docs.isEmpty)
+        if (docs.isEmpty) {
           return const Center(
             child: Text("Sohbet yok.", style: TextStyle(color: Colors.white38)),
           );
+        }
         return ListView.builder(
           itemCount: docs.length,
           itemBuilder: (c, i) {

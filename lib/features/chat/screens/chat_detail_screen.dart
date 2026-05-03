@@ -45,7 +45,7 @@ class _SohbetEkraniState extends State<SohbetEkrani> {
   void _showReportDialog(String meId) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         backgroundColor: const Color(0xFF001B2E),
         title: const Text("Rapor Et", style: TextStyle(color: Colors.white)),
         content: Column(
@@ -73,14 +73,15 @@ class _SohbetEkraniState extends State<SohbetEkrani> {
                           reason: reason,
                           convId: widget.convId,
                         );
-                        if (mounted) {
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Raporunuz iletildi."),
-                            ),
-                          );
-                        }
+                        if (!dialogContext.mounted) return;
+                        Navigator.pop(dialogContext);
+                        
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Raporunuz iletildi."),
+                          ),
+                        );
                       },
                     ),
                   )
@@ -93,7 +94,8 @@ class _SohbetEkraniState extends State<SohbetEkrani> {
   void _handleMenu(String val, String meId) async {
     if (val == 'delete') {
       await ChatService.deleteConversationForBothSides(widget.convId);
-      if (mounted) Navigator.pop(context);
+      if (!mounted) return;
+      Navigator.pop(context);
     } else if (val == 'report') {
       _showReportDialog(meId);
     } else if (val == 'block') {
@@ -103,7 +105,8 @@ class _SohbetEkraniState extends State<SohbetEkrani> {
         otherName: widget.otherName,
       );
       await ChatService.deleteConversationForBothSides(widget.convId);
-      if (mounted) Navigator.pop(context);
+      if (!mounted) return;
+      Navigator.pop(context);
     }
   }
 
