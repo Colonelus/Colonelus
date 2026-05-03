@@ -103,6 +103,7 @@ class SecretInteractionService {
       "createdAt": FieldValue.serverTimestamp(),
       "banned": false,
       "suspendedUntil": null,
+      "isDeleted": false,
       "expiresAt": Timestamp.fromDate(
         DateTime.now().add(const Duration(hours: 24)),
       ),
@@ -128,5 +129,12 @@ class SecretInteractionService {
     batch.set(userRef, userUpdate, SetOptions(merge: true));
 
     await batch.commit();
+  }
+
+  static Future<void> deleteSecret(String secretId) async {
+    await _db.collection('secrets').doc(secretId).update({
+      'isDeleted': true,
+      'deletedAt': FieldValue.serverTimestamp(),
+    });
   }
 }

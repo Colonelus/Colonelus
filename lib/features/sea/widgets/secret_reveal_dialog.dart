@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import '../../../shared/widgets/bottle_widgets.dart';
+import '../services/secret_interaction_service.dart';
 
 Future<void> sirriYakalaDialogGoster({
   required BuildContext context,
@@ -91,20 +92,20 @@ Future<void> sirriYakalaDialogGoster({
                           await FirebaseFirestore.instance
                               .collection('chat_requests')
                               .add({
-                                'requesterId': uid,
-                                'requesterName': me['rumuz'] ?? 'Sırdaş',
-                                'secretId': sirId,
-                                'secretAuthorId': karsiKullaniciId,
-                                'secretAuthorName': karsiKullaniciRumuz,
-                                'secretSnapshotText': sirIcerigi,
-                                'firstMessageText': mesaj,
-                                'status': 'pending',
-                                'createdAt': FieldValue.serverTimestamp(),
-                                'banned': false,
-                                'suspendedUntil': null,
-                                'decisionAt': null,
-                                'conversationId': null,
-                              });
+                            'requesterId': uid,
+                            'requesterName': me['rumuz'] ?? 'Sırdaş',
+                            'secretId': sirId,
+                            'secretAuthorId': karsiKullaniciId,
+                            'secretAuthorName': karsiKullaniciRumuz,
+                            'secretSnapshotText': sirIcerigi,
+                            'firstMessageText': mesaj,
+                            'status': 'pending',
+                            'createdAt': FieldValue.serverTimestamp(),
+                            'banned': false,
+                            'suspendedUntil': null,
+                            'decisionAt': null,
+                            'conversationId': null,
+                          });
 
                           if (context.mounted) {
                             Navigator.pop(context);
@@ -308,6 +309,8 @@ class _SecretRevealDialogState extends State<SecretRevealDialog>
 
   @override
   Widget build(BuildContext context) {
+    final bool isMine = widget.authorId == widget.meId;
+
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 22),
@@ -392,8 +395,8 @@ class _SecretRevealDialogState extends State<SecretRevealDialog>
                               type: widget.authorId == adminUid
                                   ? 'owner_diamond'
                                   : (widget.isVip
-                                        ? 'tekne'
-                                        : widget.bottleType),
+                                      ? 'tekne'
+                                      : widget.bottleType),
                             ),
                           ),
                         ),
@@ -417,10 +420,32 @@ class _SecretRevealDialogState extends State<SecretRevealDialog>
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: widget.authorId == widget.meId
-                        ? null
-                        : () => sirriYakalaDialogGoster(
+                  child: isMine
+                      ? ElevatedButton(
+                          onPressed: () async {
+                            final secretId = widget.secret['id'];
+                            if (secretId == null) return;
+                            await SecretInteractionService.deleteSecret(secretId);
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Sırrın denizin derinliklerine gömüldü. 6 saat yeni sır yazamazsın.',
+                                  ),
+                                  backgroundColor: Colors.orangeAccent,
+                                ),
+                              );
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.redAccent.withValues(alpha: 0.8),
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text('Sırrı Sil'),
+                        )
+                      : ElevatedButton(
+                          onPressed: () => sirriYakalaDialogGoster(
                             context: context,
                             karsiKullaniciId: widget.authorId,
                             karsiKullaniciRumuz: widget.author,
@@ -428,8 +453,8 @@ class _SecretRevealDialogState extends State<SecretRevealDialog>
                             sirIcerigi: widget.content,
                             me: widget.me,
                           ),
-                    child: const Text('Sırrı Yakala'),
-                  ),
+                          child: const Text('Sırrı Yakala'),
+                        ),
                 ),
               ],
             ),

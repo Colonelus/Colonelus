@@ -130,8 +130,9 @@ class _DenizAkisiEkraniState extends State<DenizAkisiEkrani>
               final rawSecrets = snap.data ?? [];
 
               final secrets = rawSecrets.where((s) {
+                final bool isDeleted = s['isDeleted'] ?? false;
                 final authorId = s['authorId'] ?? s['secretAuthorId'] ?? '';
-                return !blockedIds.contains(authorId);
+                return !isDeleted && !blockedIds.contains(authorId);
               }).toList();
 
               return Stack(
