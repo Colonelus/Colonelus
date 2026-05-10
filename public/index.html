@@ -1,11 +1,27 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sırdaş</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sırdaş</title>
+    <script>
+        window.onload = function() {
+            const playStoreUrl = "https://play.google.com/store/apps/details?id=com.sirdas.app";
+            const appStoreUrl = "https://apps.apple.com/app/id123456789";
+            const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+            if (/android/i.test(userAgent)) {
+                window.location.href = playStoreUrl;
+            } else if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
+                window.location.href = appStoreUrl;
+            } else {
+                window.location.href = playStoreUrl;
+            }
+        };
+    </script>
 </head>
 <body>
-  <h1>Sırdaş</h1>
+    <div style="text-align: center; margin-top: 50px; font-family: sans-serif;">
+        <h2>Sırdaş'a yönlendiriliyorsunuz...</h2>
+    </div>
 </body>
 </html>

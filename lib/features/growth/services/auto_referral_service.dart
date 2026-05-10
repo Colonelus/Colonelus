@@ -29,11 +29,21 @@ class AutoReferralService {
     final prefs = await SharedPreferences.getInstance();
     final code = prefs.getString('pending_invite_code')?.trim();
     if (code == null || code.isEmpty) return false;
-    final ok = await ReferralService.claimInviteCode(code);
-    if (ok) {
+
+    final result = await ReferralService.claimInviteCode(code);
+    
+    // ReferralService String döndüğü için başarı durumunu kontrol ediyoruz
+    if (result.startsWith("Başarılı")) {
       await prefs.remove('pending_invite_code');
       return true;
     }
+    
+    // Eğer cihaz daha önce kullanıldıysa veya kod geçersizse 
+    // tekrar tekrar denememesi için temizliyoruz
+    if (result.contains("cihaz") || result.contains("Geçersiz")) {
+      await prefs.remove('pending_invite_code');
+    }
+    
     return false;
   }
 }

@@ -1,0 +1,13 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.sirdas.app",
+    "sha256_cert_fingerprints": [
+      "df:4f:56:f2:f1:2f:32:70:bd:f7:f2:bd:c1:7f:a4:88:07:30:ab:6e:d1:3c:11:a8:cf:98:f0:d6:31:c6:f9:c2",
+      "04:95:75:a0:71:f2:60:e0:85:42:42:95:d3:4d:6d:4f:52:0e:45:b2:46:13:cd:e0:2b:a3:00:24:f0:31:1d:42",
+      "6b:ab:bd:20:54:b0:ec:b4:a8:c3:a2:46:1d:42:10:06:ba:e3:7b:c5:33:e7:d2:20:4e:10:c5:5b:f8:79:12:b7",
+      "be:9f:fa:9e:11:69:a7:4a:e7:46:e3:81:a8:bb:75:d6:50:0d:b4:ce:13:ba:00:e4:df:a3:7a:b8:2c:a3:da:58"
+    ]
+  }
+}]
